@@ -44,6 +44,7 @@ pub fn generate(
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let parser_impl = quote! {
+        #[allow(warnings)]
         impl #impl_generics ::pest::Parser<Rule> for #name #ty_generics #where_clause {
             fn parse<'i>(
                 rule: Rule,
