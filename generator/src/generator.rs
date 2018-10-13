@@ -914,6 +914,7 @@ mod tests {
                     a
                 }
 
+                #[allow(warnings)]
                 impl ::pest::Parser<Rule> for MyParser {
                     fn parse<'i>(
                         rule: Rule,
