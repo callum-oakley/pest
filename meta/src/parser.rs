@@ -10,10 +10,10 @@
 use std::char;
 use std::iter::Peekable;
 
+use pest::error::{Error, ErrorVariant};
 use pest::iterators::{Pair, Pairs};
 use pest::prec_climber::{Assoc, Operator, PrecClimber};
-use pest::{Span, Parser};
-use pest::error::{Error, ErrorVariant};
+use pest::{Parser, Span};
 
 use ast::{Expr, Rule as AstRule, RuleType};
 use validator;
@@ -500,8 +500,7 @@ fn consume_expr<'i>(
     let term = |pair: Pair<'i, Rule>| unaries(pair.into_inner().peekable(), climber);
     let infix = |lhs: Result<ParserNode<'i>, Vec<Error<Rule>>>,
                  op: Pair<'i, Rule>,
-                 rhs: Result<ParserNode<'i>, Vec<Error<Rule>>>| match op.as_rule(
-    ) {
+                 rhs: Result<ParserNode<'i>, Vec<Error<Rule>>>| match op.as_rule() {
         Rule::sequence_operator => {
             let lhs = lhs?;
             let rhs = rhs?;
@@ -590,8 +589,8 @@ fn unescape(string: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::unwrap_or_report;
+    use super::*;
 
     #[test]
     fn rules() {
@@ -1145,48 +1144,45 @@ mod tests {
 
         assert_eq!(
             ast,
-            vec![
-                AstRule {
-                    name: "rule".to_owned(),
-                    ty: RuleType::Silent,
-                    expr: Expr::Choice(
+            vec![AstRule {
+                name: "rule".to_owned(),
+                ty: RuleType::Silent,
+                expr: Expr::Choice(
+                    Box::new(Expr::Seq(
                         Box::new(Expr::Seq(
                             Box::new(Expr::Seq(
-                                Box::new(Expr::Seq(
-                                    Box::new(Expr::RepExact(
-                                        Box::new(Expr::Ident("a".to_owned())),
-                                        1
-                                    )),
-                                    Box::new(Expr::RepMin(Box::new(Expr::Str("a".to_owned())), 3))
-                                )),
-                                Box::new(Expr::RepMax(Box::new(Expr::Ident("b".to_owned())), 2))
+                                Box::new(Expr::RepExact(Box::new(Expr::Ident("a".to_owned())), 1)),
+                                Box::new(Expr::RepMin(Box::new(Expr::Str("a".to_owned())), 3))
                             )),
-                            Box::new(Expr::RepMinMax(Box::new(Expr::Str("b".to_owned())), 1, 2))
+                            Box::new(Expr::RepMax(Box::new(Expr::Ident("b".to_owned())), 2))
                         )),
-                        Box::new(Expr::NegPred(Box::new(Expr::Rep(Box::new(Expr::Opt(
-                            Box::new(Expr::Choice(
-                                Box::new(Expr::Insens("c".to_owned())),
-                                Box::new(Expr::Push(Box::new(Expr::Range(
-                                    "d".to_owned(),
-                                    "e".to_owned()
-                                ))))
-                            ))
-                        ))))))
-                    )
-                },
-            ]
+                        Box::new(Expr::RepMinMax(Box::new(Expr::Str("b".to_owned())), 1, 2))
+                    )),
+                    Box::new(Expr::NegPred(Box::new(Expr::Rep(Box::new(Expr::Opt(
+                        Box::new(Expr::Choice(
+                            Box::new(Expr::Insens("c".to_owned())),
+                            Box::new(Expr::Push(Box::new(Expr::Range(
+                                "d".to_owned(),
+                                "e".to_owned()
+                            ))))
+                        ))
+                    ))))))
+                )
+            },]
         );
     }
 
     #[test]
-    #[should_panic(expected = "grammar error
+    #[should_panic(
+        expected = "grammar error
 
  --> 1:13
   |
 1 | rule = { \"\"{4294967297} }
   |             ^--------^
   |
-  = number cannot overflow u32")]
+  = number cannot overflow u32"
+    )]
     fn repeat_exact_overflow() {
         let input = "rule = { \"\"{4294967297} }";
 
@@ -1195,14 +1191,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "grammar error
+    #[should_panic(
+        expected = "grammar error
 
  --> 1:13
   |
 1 | rule = { \"\"{0} }
   |             ^
   |
-  = cannot repeat 0 times")]
+  = cannot repeat 0 times"
+    )]
     fn repeat_exact_zero() {
         let input = "rule = { \"\"{0} }";
 
@@ -1211,14 +1209,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "grammar error
+    #[should_panic(
+        expected = "grammar error
 
  --> 1:13
   |
 1 | rule = { \"\"{4294967297,} }
   |             ^--------^
   |
-  = number cannot overflow u32")]
+  = number cannot overflow u32"
+    )]
     fn repeat_min_overflow() {
         let input = "rule = { \"\"{4294967297,} }";
 
@@ -1227,14 +1227,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "grammar error
+    #[should_panic(
+        expected = "grammar error
 
  --> 1:14
   |
 1 | rule = { \"\"{,4294967297} }
   |              ^--------^
   |
-  = number cannot overflow u32")]
+  = number cannot overflow u32"
+    )]
     fn repeat_max_overflow() {
         let input = "rule = { \"\"{,4294967297} }";
 
@@ -1243,14 +1245,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "grammar error
+    #[should_panic(
+        expected = "grammar error
 
  --> 1:14
   |
 1 | rule = { \"\"{,0} }
   |              ^
   |
-  = cannot repeat 0 times")]
+  = cannot repeat 0 times"
+    )]
     fn repeat_max_zero() {
         let input = "rule = { \"\"{,0} }";
 
@@ -1259,14 +1263,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "grammar error
+    #[should_panic(
+        expected = "grammar error
 
  --> 1:13
   |
 1 | rule = { \"\"{4294967297,4294967298} }
   |             ^--------^
   |
-  = number cannot overflow u32")]
+  = number cannot overflow u32"
+    )]
     fn repeat_min_max_overflow() {
         let input = "rule = { \"\"{4294967297,4294967298} }";
 
@@ -1275,21 +1281,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "grammar error
+    #[should_panic(
+        expected = "grammar error
 
  --> 1:15
   |
 1 | rule = { \"\"{0,0} }
   |               ^
   |
-  = cannot repeat 0 times")]
+  = cannot repeat 0 times"
+    )]
     fn repeat_min_max_zero() {
         let input = "rule = { \"\"{0,0} }";
 
         let pairs = PestParser::parse(Rule::grammar_rules, input).unwrap();
         unwrap_or_report(consume_rules_with_spans(pairs));
     }
-
 
     #[test]
     fn unescape_all() {
